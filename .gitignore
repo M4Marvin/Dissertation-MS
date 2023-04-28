@@ -1,0 +1,18 @@
+#  .gitignore file for a python data science project
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+.vscode/
+.idea/
+.ipynb_checkpoints/
+
+# Data folders
+data/
+pdfs/
+text_data/
+
+# Mac os files
+.DS_Store/

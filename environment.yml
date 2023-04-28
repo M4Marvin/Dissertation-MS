@@ -1,0 +1,17 @@
+name: bio
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - openmm
+  - ipykernel
+  - jupyter
+  - biopython
+  - pandas
+  - matplotlib
+  - seaborn
+  - ca-certificates
+  - openssl
+  - mdtraj
+  - certifi
+prefix: /Users/marvinprakash/mambaforge/envs/bio
