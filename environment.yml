@@ -14,4 +14,5 @@ dependencies:
   - openssl
   - mdtraj
   - certifi
+  - rich
 prefix: /Users/marvinprakash/mambaforge/envs/bio

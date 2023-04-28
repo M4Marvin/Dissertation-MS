@@ -1,7 +1,7 @@
 import mdtraj as md
 import os
 
-from src.utils import get_chain_type, get_residue_names_list
+from src.utils import get_chain_type
 
 
 def remove_neg_resSeq(traj: md.Trajectory) -> md.Trajectory:
@@ -133,7 +133,7 @@ def prepare_traj(
     _remove_extra_chains=True,
     _remove_water=True,
     _remove_hydrogen=True,
-    _remove_negative=True,
+    _remove_negative_indices=True,
 ):
     """
     Prepares a mdtraj.Trajectory object for analysis.
@@ -164,10 +164,52 @@ def prepare_traj(
     if _remove_hydrogen:
         traj = remove_hydrogen(traj)
 
-    if _remove_negative:
+    if _remove_negative_indices:
         traj = remove_neg_resSeq(traj)
 
     return traj
+
+
+def clean_pdb(
+    pdb_path: str,
+    output_path: str,
+    _remove_extra_chains=True,
+    _remove_water=True,
+    _remove_hydrogen=True,
+    _remove_negative_indices=True,
+) -> None:
+    """
+    Cleans a pdb file and saves the cleaned version.
+
+    Parameters
+    ----------
+    pdb_path : str
+        The path to the pdb file to clean.
+    output_path : str
+        The path to save the cleaned pdb file.
+    _remove_extra_chains : bool
+        Whether to remove chains that are not protein or ssDNA.
+    _remove_water : bool
+        Whether to remove water molecules.
+    _remove_hydrogen : bool
+        Whether to remove hydrogen atoms.
+    _remove_negative_indices : bool
+        Whether to remove atoms with negative resSeq values.
+    """
+    # Open the pdb file
+    traj = md.load_pdb(pdb_path)
+
+    # Prepare the trajectory
+    traj = prepare_traj(
+        traj,
+        _remove_extra_chains=_remove_extra_chains,
+        _remove_water=_remove_water,
+        _remove_hydrogen=_remove_hydrogen,
+        _remove_negative_indices=_remove_negative_indices,
+    )
+
+    # Save the trajectory
+    traj.save(output_path)
 
 
 def main():
@@ -181,12 +223,8 @@ def main():
     # Prepare the trajectory
     traj = prepare_traj(traj)
 
-    # Get the protein chain
-    protein_chain = traj.topology.chain(0)
-
-    print(protein_chain)
-
-    processed_folder = "./data/processed_pdbs"
+    # Save the trajectory
+    traj.save("./data/8DFA_clean.pdb")
 
 
 if __name__ == "__main__":

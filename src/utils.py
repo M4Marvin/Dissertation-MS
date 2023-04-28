@@ -1,5 +1,8 @@
-from typing import List
+from typing import Union, Tuple
 import numpy as np
+from Bio.PDB.Residue import Residue
+from Bio.PDB.Chain import Chain as BioChain
+
 
 residue_names = [
     "ALA",
@@ -44,58 +47,187 @@ phosphate_atoms = ["OP1", "OP2", "P"]
 sugar_atoms = ["C1'", "C2'", "C3'", "C4'", "C5'", "O3'", "O4'", "O5'"]
 
 
-def get_chain_type(chain) -> str:
-    first_residue = chain.residue(0).name
-    if first_residue in residue_names:
-        return "protein"
-    elif first_residue in nucleotide_names:
-        return "ssDNA"
-    else:
-        return "other"
+class ChainTypeHelper:
+    @staticmethod
+    def get_chain_type(chain: BioChain) -> str:
+        """
+        Returns the type of the chain. The chain can be a protein, ssdna.
+
+        Parameters
+        ----------
+        chain : BioChain
+            The chain to be processed.
+
+        Returns
+        -------
+        str
+            The type of the chain.
+        """
+        for residue in chain:
+            if residue.get_resname() in residue_names:
+                return "protein"
+            elif residue.get_resname() in nucleotide_names:
+                return "ssdna"
+        return None
 
 
-def get_residue_names_list(chain) -> List[str]:
-    return [x.name for x in chain.residues]
+class UnitTypeHelper:
+    @staticmethod
+    def get_unit_type(unit: Residue) -> str:
+        """
+        Returns the type of the unit. The unit can be a type_1 residue, type_2
+        residue or ssdna.
+
+        Parameters
+        ----------
+        unit : Residue
+            The unit to be processed.
+
+        Returns
+        -------
+        str
+            The type of the unit.
+        """
+        if unit.get_resname() in residue_names:
+            if unit.get_resname() in residue_info["type_1"]:
+                return "type_1"
+            elif unit.get_resname() in residue_info["type_2"]:
+                return "type_2"
+        elif unit.get_resname() in nucleotide_names:
+            return "ssdna"
+        else:
+            raise ValueError("Unit is not a protein or ssdna residue.")
 
 
-def distance(coord1, coord2):
-    return np.linalg.norm(coord1 - coord2)
+class NucleotideAtomTypeHelper:
+    @staticmethod
+    def get_nucleotide_atom_type(atom) -> str:
+        """
+        Returns the type of the atom. The atom can be a sugar, base or
+        phosphate atom.
+
+        Parameters
+        ----------
+        atom : Atom
+            The atom to be processed.
+
+        Returns
+        -------
+        str
+            The type of the atom.
+        """
+
+        atom_name = atom.get_name()
+        phosphate_atoms = ["P", "OP1", "OP2"]
+        if atom_name in phosphate_atoms:
+            return "phosphate"
+        elif "'" in atom_name:
+            return "sugar"
+        else:
+            return "base"
 
 
-def angle(coord1, coord2, coord3):
-    vector1 = coord1 - coord2
-    vector2 = coord3 - coord2
-    cos_angle = np.dot(vector1, vector2) / (
-        np.linalg.norm(vector1) * np.linalg.norm(vector2)
-    )
-    angle = np.arccos(np.clip(cos_angle, -1, 1))
-    return np.degrees(angle)
+class COMHelper:
+    @staticmethod
+    def get_sidechain_com(residue: Residue) -> Union[np.ndarray, None]:
+        """
+        Returns the center of mass of the sidechain of the residue.
 
+        Parameters
+        ----------
+        residue : Residue
+            The residue to be processed.
 
-def dihedral(coord1, coord2, coord3, coord4):
-    # Calculate the vectors between the points
-    b1 = coord2 - coord1
-    b2 = coord3 - coord2
-    b3 = coord4 - coord3
+        Returns
+        -------
+        Union[np.ndarray, None]
+            The center of mass of the sidechain of the residue.
+            Can be None if the residue does not have a sidechain.
+        """
 
-    # Calculate the normal vectors to the planes defined by the
-    # first three points and last three points
-    n1 = np.cross(b1, b2)
-    n2 = np.cross(b2, b3)
+        sidechain_coords = [
+            atom.get_coord()
+            for atom in residue.get_atoms()
+            if atom.get_name() not in ["N", "C", "O", "CA"]
+        ]
+        return np.mean(sidechain_coords, axis=0) if sidechain_coords else None
 
-    # Calculate the axis of rotation
-    m = np.cross(n1, n2)
+    @staticmethod
+    def process_protein_residue(
+        protein: Residue,
+    ) -> Tuple[np.ndarray, Union[np.ndarray, None]]:
+        """
+        Returns the center of mass of the residue and the center of mass
+        of the sidechain of the residue.
 
-    # Calculate the sine and cosine of the dihedral angle
-    sin_theta = (
-        np.linalg.norm(np.cross(n1, m))
-        * np.dot(n1, n2)
-        / (np.linalg.norm(n1) * np.linalg.norm(n2))
-    )
-    cos_theta = np.dot(n1, n2) / (np.linalg.norm(n1) * np.linalg.norm(n2))
+        Parameters
+        ----------
+        protein : Residue
+            The residue to be processed.
 
-    # Calculate the dihedral angle in radians and convert to degrees
-    theta = np.arctan2(sin_theta, cos_theta)
-    theta_degrees = np.degrees(theta)
+        Returns
+        -------
+        Tuple[np.ndarray, Union[np.ndarray, None]]
+            The center of mass of the residue and the center of mass of the
+            sidechain of the residue.
+        """
+        ca_coords = next(
+            (
+                atom.get_coord()
+                for atom in protein.get_atoms()
+                if atom.get_name() == "CA"
+            ),
+            None,
+        )
+        sidechain_com = COMHelper.get_sidechain_com(protein)
+        return ca_coords, sidechain_com
 
-    return theta_degrees
+    @staticmethod
+    def get_nucleotide_coms(
+        nucleotide: Residue,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Returns the center of mass of the sugar, base and phosphate of the
+        nucleotide.
+
+        Parameters
+        ----------
+        nucleotide : Residue
+            The nucleotide to be processed.
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray, np.ndarray]
+            The center of mass of the sugar, base and phosphate of the
+            nucleotide.
+        """
+
+        sugar_coords = []
+        base_coords = []
+        phosphate_coords = []
+
+        for atom in nucleotide.get_atoms():
+            atom_type = NucleotideAtomTypeHelper.get_nucleotide_atom_type(atom)
+            if atom_type == "sugar":
+                sugar_coords.append(atom.get_coord())
+            elif atom_type == "base":
+                base_coords.append(atom.get_coord())
+            elif atom_type == "phosphate":
+                phosphate_coords.append(atom.get_coord())
+
+        if sugar_coords == []:
+            sugar_com = None
+        else:
+            sugar_com = np.mean(sugar_coords, axis=0)
+
+        if base_coords == []:
+            base_com = None
+        else:
+            base_com = np.mean(base_coords, axis=0)
+
+        if phosphate_coords == []:
+            phosphate_com = None
+        else:
+            phosphate_com = np.mean(phosphate_coords, axis=0)
+
+        return sugar_com, base_com, phosphate_com
