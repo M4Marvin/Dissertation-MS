@@ -1,7 +1,8 @@
 from typing import Union, Tuple
+
 import numpy as np
-from Bio.PDB.Residue import Residue
 from Bio.PDB.Chain import Chain as BioChain
+from Bio.PDB.Residue import Residue
 
 
 residue_names = [

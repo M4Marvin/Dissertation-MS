@@ -1,7 +1,8 @@
-from src.utils import UnitTypeHelper
-from src.utils import COMHelper
-from Bio.PDB import Residue
 from typing import Dict, Any
+from Bio.PDB import Residue
+
+from src.utils import COMHelper
+from src.utils import UnitTypeHelper
 
 
 class ChainUnit:
