@@ -50,75 +50,77 @@ class Point:
         """
         return self.coordinates
 
-    def distance(self, other_point) -> float:
-        """
-        Calculates the Euclidean distance between this point and another point.
 
-        Args:
-            other_point (Point): Another Point object.
+def distance(point_1: Point, point_2: Point) -> np.float64:
+    """
+    Calculates the distance between two points.
 
-        Returns:
-            float: Euclidean distance between the two points.
-        """
-        return np.linalg.norm(self.coordinates - other_point.coordinates)
+    Args:
+        point_1 (Point): First Point object.
+        point_2 (Point): Second Point object.
 
-    @classmethod
-    def vector(cls, point1, point2):
-        """
-        Calculates the vector from point1 to point2.
+    Returns:
+        np.float64: Distance between the two points.
+    """
+    return np.linalg.norm(point_1.coordinates - point_2.coordinates)
 
-        Args:
-            point1 (Point): Start point.
-            point2 (Point): End point.
 
-        Returns:
-            np.ndarray: Vector from point1 to point2.
-        """
-        return point2.coordinates - point1.coordinates
+def vector(point1: Point, point2: Point) -> np.ndarray:
+    """
+    Calculates the vector from point1 to point2.
 
-    @classmethod
-    def angle(cls, point1, point2, point3) -> float:
-        """
-        Calculates the angle (in radians) created by three points, with the
-        second point as the vertex.
+    Args:
+        point1 (Point): Start point.
+        point2 (Point): End point.
 
-        Args:
-            point1 (Point): First Point object.
-            point2 (Point): Second Point object (vertex of the angle).
-            point3 (Point): Third Point object.
+    Returns:
+        np.ndarray: Vector from point1 to point2.
+    """
+    return point2.coordinates - point1.coordinates
 
-        Returns:
-            float: Angle in radians between the three points.
-        """
-        vector1 = cls.vector(point2, point1)
-        vector2 = cls.vector(point2, point3)
-        cosine_angle = np.dot(vector1, vector2) / (
-            np.linalg.norm(vector1) * np.linalg.norm(vector2)
-        )
-        return np.arccos(np.clip(cosine_angle, -1.0, 1.0))
 
-    @classmethod
-    def dihedral(cls, point1, point2, point3, point4) -> float:
-        """
-        Calculates the dihedral angle (in radians) created by four points.
+def angle(point1: Point, point2: Point, point3: Point) -> np.float64:
+    """
+    Calculates the angle (in degrees) created by three points, with the
+    second point as the vertex.
 
-        Args:
-            point1 (Point): First Point object.
-            point2 (Point): Second Point object.
-            point3 (Point): Third Point object.
-            point4 (Point): Fourth Point object.
+    Args:
+        point1 (Point): First Point object.
+        point2 (Point): Second Point object (vertex of the angle).
+        point3 (Point): Third Point object.
 
-        Returns:
-            float: Dihedral angle in radians between the four points.
-        """
-        vector1 = cls.vector(point1, point2)
-        vector2 = cls.vector(point2, point3)
-        vector3 = cls.vector(point3, point4)
+    Returns:
+        np.float64: Angle in degrees between the three points.
+    """
+    vector1 = vector(point2, point1)
+    vector2 = vector(point2, point3)
+    cosine_angle: np.float64 = np.dot(vector1, vector2) / (
+        np.linalg.norm(vector1) * np.linalg.norm(vector2)
+    )
+    return np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
 
-        normal1 = np.cross(vector1, vector2)
-        normal2 = np.cross(vector2, vector3)
 
-        cosine_angle = np.dot(normal1, normal2)
-        cosine_angle /= np.linalg.norm(normal1) * np.linalg.norm(normal2)
+def dihedral(point1: Point, point2: Point, point3: Point, point4: Point) -> np.float64:
+    """
+    Calculates the dihedral angle (in degrees) created by four points.
 
-        return np.arccos(np.clip(cosine_angle, -1.0, 1.0))
+    Args:
+        point1 (Point): First Point object.
+        point2 (Point): Second Point object.
+        point3 (Point): Third Point object.
+        point4 (Point): Fourth Point object.
+
+    Returns:
+        float: Dihedral angle in degrees between the four points.
+    """
+    vector1 = vector(point1, point2)
+    vector2 = vector(point2, point3)
+    vector3 = vector(point3, point4)
+
+    normal1 = np.cross(vector1, vector2)
+    normal2 = np.cross(vector2, vector3)
+
+    cosine_angle = np.dot(normal1, normal2)
+    cosine_angle /= np.linalg.norm(normal1) * np.linalg.norm(normal2)
+
+    return np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))

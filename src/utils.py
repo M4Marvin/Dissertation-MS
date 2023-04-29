@@ -313,36 +313,6 @@ class COMHelper:
             nucleotide.
         """
 
-        # sugar_coords = []
-        # base_coords = []
-        # phosphate_coords = []
-
-        # for atom in nucleotide.get_atoms():
-        #     atom_type = NucleotideAtomHelper.get_nucleotide_atom_type(atom)
-        #     if atom_type == "sugar":
-        #         sugar_coords.append(atom.get_coord())
-        #     elif atom_type == "base":
-        #         base_coords.append(atom.get_coord())
-        #     elif atom_type == "phosphate":
-        #         phosphate_coords.append(atom.get_coord())
-
-        # if sugar_coords == []:
-        #     sugar_com = None
-        # else:
-        #     sugar_com =
-
-        # if base_coords == []:
-        #     base_com = None
-        # else:
-        #     base_com = np.mean(base_coords, axis=0)
-
-        # if phosphate_coords == []:
-        #     phosphate_com = None
-        # else:
-        #     phosphate_com = np.mean(phosphate_coords, axis=0)
-
-        # return sugar_com, base_com, phosphate_com
-
         sugar_atoms = []
         base_atoms = []
         phosphate_atoms = []

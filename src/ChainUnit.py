@@ -165,8 +165,9 @@ class ChainUnit:
 
         Returns
         -------
-            tuple
-                the center of masses of the different parts of the unit
+            Union[dict, None]
+                a dictionary containing the center of masses of the different
+                parts
         """
 
         # Check for the fidelity of the unit
@@ -177,21 +178,25 @@ class ChainUnit:
             # Get the center of mass of the alpha carbon
             ca_coords = self.unit["CA"].get_coord()
             ca_coords = Point(ca_coords)
-            return ca_coords, None
+            return {"ca_coords": ca_coords, "sidechain_com": None}
 
         elif self.unit_type == "type_2":
             # Get the center of mass of the alpha carbon and the sidechain
             ca_coords = self.unit["CA"].get_coord()
             ca_coords = Point(ca_coords)
             sidechain_com = COMHelper.get_sidechain_com(self.unit)
-            return ca_coords, sidechain_com
+            return {"ca_coords": ca_coords, "sidechain_com": sidechain_com}
 
         elif self.unit_type == "ssdna":
             # Get the center of mass of the phosphate, sugar, and base
             phosphate_com, sugar_com, base_com = COMHelper.get_nucleotide_coms(
                 self.unit
             )
-            return phosphate_com, sugar_com, base_com
+            return {
+                "phosphate_com": phosphate_com,
+                "sugar_com": sugar_com,
+                "base_com": base_com,
+            }
 
         else:
             return None
@@ -215,28 +220,11 @@ class ChainUnit:
 
         if self.unit_type == "type_1" or self.unit_type == "type_2":
             unit_dict["unit_type"] = self.unit_type
-            ca_coords, sidechain_com = self.coms
-            unit_dict["ca_coords"] = ca_coords
-            if sidechain_com is not None:
-                unit_dict["sidechain_com"] = sidechain_com
-            else:
-                unit_dict["sidechain_com"] = None
 
         elif self.unit_type == "ssdna":
             phosphate_com, sugar_com, base_com = self.coms
-            if phosphate_com is not None:
-                unit_dict["phosphate_com"] = phosphate_com
-            else:
-                unit_dict["phosphate_com"] = None
 
-            if sugar_com is not None:
-                unit_dict["sugar_com"] = sugar_com
-            else:
-                unit_dict["sugar_com"] = None
-
-            if base_com is not None:
-                unit_dict["base_com"] = base_com
-            else:
-                unit_dict["base_com"] = None
+        # Merge the dictionaries
+        unit_dict = {**unit_dict, **self.coms}
 
         return unit_dict
