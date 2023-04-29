@@ -22,6 +22,7 @@ class Structure:
             List of DataFrame objects representing the chains in the structure
     """
 
+    pdb_id: str
     structure: BioStructure
     chains: List[Chain] = None
     dfs: List[pd.DataFrame] = None
@@ -32,7 +33,7 @@ class Structure:
         instantiation.
         """
         self.chains = self._generate_chain_objects()
-        self.dfs, self.chain_types = self._convert_chains_to_dataframes()
+        self.dfs = self._convert_chains_to_dataframes()
 
     def _generate_chain_objects(self) -> List[BioChain]:
         """
@@ -64,4 +65,34 @@ class Structure:
         Returns:
             List of DataFrame objects representing each chain in the structure.
         """
-        return [chain.to_dataframe() for chain in self.chains]
+        return [chain.df for chain in self.chains]
+
+    def save_as_markdown(
+        self,
+        out_path: str = "data/markdowns",
+        show: bool = True,
+    ) -> None:
+        """
+        Saves the structure as a markdown file.
+
+        Args:
+            out_path : str, optional
+                Path to save the markdown file to
+            show : bool, optional
+                Whether to show the markdown file in the browser
+        """
+
+        out_file = f"{out_path}/{self.pdb_id}.md"
+
+        with open(out_file, "w") as f:
+            f.write(f"# {self.pdb_id}\n\n")
+            f.write(f"## Number of chains: {len(self.chains)}\n\n")
+
+            for i, chain in enumerate(self.chains):
+                f.write(f"### Chain {i + 1}\n\n")
+                f.write(chain.df.to_markdown())
+
+        if show:
+            import webbrowser
+
+            webbrowser.open(out_file)

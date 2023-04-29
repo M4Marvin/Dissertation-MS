@@ -29,7 +29,8 @@ class Chain:
 
     def __post_init__(self):
         """
-        Initializes the chain_type, units and df attributes post object instantiation.
+        Initializes the chain_type, units and df attributes post object
+        instantiation.
         """
         self.chain_type = ChainTypeHelper.get_chain_type(self.chain)
         self.units = self._generate_chain_units()
@@ -52,7 +53,9 @@ class Chain:
             String representation of the Chain object.
         """
         chain_info = (
-            f"Chain type: {self.chain_type}\n" f"Number of units: {len(self.units)}\n"
+            f"Chain type: "
+            f"{self.chain_type}\n"
+            f"Number of units: {len(self.units)}\n"
         )
         return chain_info
 
