@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
+from typing import Union
 
 
 @dataclass
@@ -65,7 +66,9 @@ def distance(point_1: Point, point_2: Point) -> np.float64:
     return np.linalg.norm(point_1.coordinates - point_2.coordinates)
 
 
-def vector(point1: Point, point2: Point) -> np.ndarray:
+def vector(
+    point1: Union[Point, None], point2: Union[Point, None]
+) -> Union[np.ndarray, None]:
     """
     Calculates the vector from point1 to point2.
 
@@ -74,12 +77,19 @@ def vector(point1: Point, point2: Point) -> np.ndarray:
         point2 (Point): End point.
 
     Returns:
-        np.ndarray: Vector from point1 to point2.
+        np.ndarray: Vector from point1 to point2. If any of the points is None,
+        returns None.
     """
+    if point1 is None or point2 is None:
+        return None
     return point2.coordinates - point1.coordinates
 
 
-def angle(point1: Point, point2: Point, point3: Point) -> np.float64:
+def angle(
+    point1: Union[Point, None],
+    point2: Union[Point, None],
+    point3: Union[Point, None],
+) -> Union[np.float64, None]:
     """
     Calculates the angle (in degrees) created by three points, with the
     second point as the vertex.
@@ -90,8 +100,11 @@ def angle(point1: Point, point2: Point, point3: Point) -> np.float64:
         point3 (Point): Third Point object.
 
     Returns:
-        np.float64: Angle in degrees between the three points.
+        np.float64: Angle in degrees between the three points. If any of the
+        points is None, returns None.
     """
+    if point1 is None or point2 is None or point3 is None:
+        return None
     vector1 = vector(point2, point1)
     vector2 = vector(point2, point3)
     cosine_angle: np.float64 = np.dot(vector1, vector2) / (
@@ -100,7 +113,12 @@ def angle(point1: Point, point2: Point, point3: Point) -> np.float64:
     return np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0)))
 
 
-def dihedral(point1: Point, point2: Point, point3: Point, point4: Point) -> np.float64:
+def dihedral(
+    point1: Union[Point, None],
+    point2: Union[Point, None],
+    point3: Union[Point, None],
+    point4: Union[Point, None],
+) -> Union[np.float64, None]:
     """
     Calculates the dihedral angle (in degrees) created by four points.
 
@@ -113,6 +131,9 @@ def dihedral(point1: Point, point2: Point, point3: Point, point4: Point) -> np.f
     Returns:
         float: Dihedral angle in degrees between the four points.
     """
+    if point1 is None or point2 is None or point3 is None or point4 is None:
+        return None
+
     vector1 = vector(point1, point2)
     vector2 = vector(point2, point3)
     vector3 = vector(point3, point4)
