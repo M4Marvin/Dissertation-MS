@@ -52,7 +52,7 @@ class Point:
         return self.coordinates
 
 
-def distance(point_1: Point, point_2: Point) -> np.float64:
+def distance(point_1: Point, point_2: Point) -> Union[np.float64, None]:
     """
     Calculates the distance between two points.
 
@@ -61,8 +61,11 @@ def distance(point_1: Point, point_2: Point) -> np.float64:
         point_2 (Point): Second Point object.
 
     Returns:
-        np.float64: Distance between the two points.
+        np.float64: Distance between the two points. If any of the points is
+        None, returns None.
     """
+    if point_1 is None or point_2 is None:
+        return None
     return np.linalg.norm(point_1.coordinates - point_2.coordinates)
 
 

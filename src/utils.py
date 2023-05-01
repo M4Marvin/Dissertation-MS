@@ -1,12 +1,12 @@
-from typing import Union, Tuple, List
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
+import pandas as pd
+from Bio.PDB.Atom import Atom
 from Bio.PDB.Chain import Chain as BioChain
 from Bio.PDB.Residue import Residue
-from Bio.PDB.Atom import Atom
 
 from src.Point import Point
-
 
 residue_names = [
     "ALA",
@@ -141,7 +141,7 @@ class ChainTypeHelper:
                 return "protein"
             elif residue.get_resname() in nucleotide_names:
                 return "ssdna"
-        return None
+        return "unknown"
 
 
 class UnitTypeHelper:
@@ -331,3 +331,25 @@ class COMHelper:
         phosphate_com = COMHelper.center_of_mass(phosphate_atoms)
 
         return sugar_com, base_com, phosphate_com
+
+
+def combine_dicts(dict_list: List[Dict]) -> Dict:
+    # Initialize a new dictionary
+    combined_dict: Dict = {}
+
+    for d in dict_list:
+        for key, value in d.items():
+            # If the key is not yet in the new dict, add it
+            if key not in combined_dict:
+                combined_dict[key] = value
+            else:
+                # If the value is a numpy array, use numpy's concatenate
+                if isinstance(value, np.ndarray):
+                    combined_dict[key] = np.concatenate((combined_dict[key], value))
+                # If the value is a pandas DataFrame, use pandas' concat
+                elif isinstance(value, pd.DataFrame):
+                    combined_dict[key] = pd.concat(
+                        [combined_dict[key], value]
+                    ).reset_index(drop=True)
+
+    return combined_dict
