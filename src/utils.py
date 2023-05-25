@@ -5,6 +5,7 @@ import pandas as pd
 from Bio.PDB.Atom import Atom
 from Bio.PDB.Chain import Chain as BioChain
 from Bio.PDB.Residue import Residue
+from Bio.PDB.Polypeptide import is_aa, is_nucleic
 
 from src.Point import Point
 
@@ -60,8 +61,8 @@ residue_info = {
 
 nucleotide_names = ["DA", "DT", "DG", "DC"]
 
-phosphate_atoms = ["OP1", "OP2", "P"]
-sugar_atoms = ["C1'", "C2'", "C3'", "C4'", "C5'", "O3'", "O4'", "O5'"]
+phosphate_atoms = ["OP1", "OP2", "P", "O5'"]
+sugar_atoms = ["C1'", "C2'", "C3'", "C4'", "C5'", "O3'", "O4'"]
 
 
 class AtomHelper:
@@ -161,14 +162,15 @@ class UnitTypeHelper:
         str
             The type of the unit.
         """
-        if unit.get_resname() in residue_names:
+        if is_aa(unit):
             if unit.get_resname() in residue_info["type_1"]:
                 return "type_1"
             elif unit.get_resname() in residue_info["type_2"]:
                 return "type_2"
-        elif unit.get_resname() in nucleotide_names:
+        elif is_nucleic(unit):
             return "ssdna"
         else:
+            print(unit.get_resname())
             raise ValueError("Unit is not a protein or ssdna residue.")
 
 
@@ -190,14 +192,7 @@ class NucleotideAtomHelper:
             The type of the atom.
         """
 
-        atom_name = atom.get_name()
-        phosphate_atoms = ["P", "OP1", "OP2"]
-        if atom_name in phosphate_atoms:
-            return "phosphate"
-        elif "'" in atom_name:
-            return "sugar"
-        else:
-            return "base"
+        return AtomHelper.get_atom_type("ssdna", atom)
 
 
 class COMHelper:
@@ -215,9 +210,29 @@ class COMHelper:
         """
         masses = [AtomHelper.element_to_mass(element) for element in element_names]
         coordinates = np.average(
-            [point.get_coordinates() for point in points], axis=0, weights=masses
+            [point.coordinates for point in points], axis=0, weights=masses
         )
         return Point(coordinates)
+
+    @staticmethod
+    def get_geometric_center(atoms: List[Atom]) -> Union[Point, None]:
+        """
+        Calculates the geometric center of a set of atoms.
+
+        Args:
+            atoms (List[Atom]): List of Atom objects.
+
+        Returns:
+            Point: Geometric center of the set of atoms or None
+            if the list of atoms is empty.
+
+        """
+
+        if len(atoms) == 0:
+            return None
+
+        points = [Point(atom.get_coord()) for atom in atoms]
+        return COMHelper._center_of_mass(points, ["C"] * len(atoms))
 
     @staticmethod
     def center_of_mass(atoms: List[Atom]) -> Union[Point, None]:
@@ -353,3 +368,8 @@ def combine_dicts(dict_list: List[Dict]) -> Dict:
                     ).reset_index(drop=True)
 
     return combined_dict
+
+
+def print_key_shapes(dictionary: Dict) -> None:
+    for key, value in dictionary.items():
+        print(f"{key}: {value.shape}")

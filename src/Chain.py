@@ -1,10 +1,18 @@
-import pandas as pd
-import numpy as np
 from typing import List
+
+import numpy as np
+import pandas as pd
 from Bio.PDB.Chain import Chain as BioChain
-from src.ChainUnit import ChainUnitGenerator, ChainUnit
-from src.Point import distance, angle, dihedral
+
+from src.ChainUnit import ChainUnit, ChainUnitGenerator
+from src.Point import angle, dihedral, distance
 from src.utils import ChainTypeHelper
+
+# Constants
+TYPE_1 = "type_1"
+TYPE_2 = "type_2"
+CA_COORDS = "ca_coords"
+SIDCHAIN_COM = "sidechain_com"
 
 
 class Chain:
@@ -16,32 +24,69 @@ class Chain:
             List of ChainUnit objects representing the residues in the chain
     """
 
-    def __init__(self, chain: BioChain, chain_type: str):
-        self.chain = chain
+    def __init__(
+        self, bio_chain: BioChain, chain_type: str, perform_calculations: bool = True
+    ):
+        self.chain = bio_chain
         self.type = chain_type
         self.units = self._generate_chain_units()
-        self.df = self.generate_dataframe()
+
+        # Trim the chain to remove none units from the ends
+        self.units = remove_none_from_ends(self.units)
+
         self.distances = {}
         self.angles = {}
         self.dihedrals = {}
 
+        if perform_calculations:
+            self.calculate_distances()
+            self.calculate_angles()
+            self.calculate_dihedrals()
+
     def __str__(self) -> str:
         chain_info = f"Type: " f"{self.type}\n" f"Number of units: {len(self.units)}\n"
+        # chain_info += f"Sequence: {self.chain.get_sequence()}\n"
         return chain_info
 
-    def _generate_chain_units(self) -> List[ChainUnit]:
-        gen = ChainUnitGenerator()
-        units = []
-        for unit in self.chain.get_residues():
-            unit = gen.generate(unit)
-            units.append(unit)
-        return units
+    def __repr__(self) -> str:
+        return self.__str__()
 
-    def generate_dataframe(self):
-        # Only consider units that have passed the fidelity check
+    def trim_chain(self):
+        """
+        Trims the chain to remove none units from the ends.
+        """
+        for i, unit in enumerate(self.units):
+            if unit is not None:
+                break
+
+        for j, unit in enumerate(self.units[::-1]):
+            if unit is not None:
+                break
+
+        self.units = self.units[i : len(self.units) - j]
+
+    def _generate_chain_units(self) -> List[ChainUnit]:
+        """
+        Generates chain units.
+
+        Returns:
+            List of ChainUnit objects.
+        """
+        gen = ChainUnitGenerator()
+        return [
+            gen.generate(unit) for unit in self.chain.get_residues() if unit is not None
+        ]
+
+    @property
+    def df(self) -> pd.DataFrame:
+        """
+        Generates a dataframe from the units.
+
+        Returns:
+            A dataframe containing the units.
+        """
         unit_dicts = [unit.to_dict() for unit in self.units if unit.fidelity]
-        df = pd.DataFrame(unit_dicts)
-        return df
+        return pd.DataFrame(unit_dicts)
 
     def calculate_distances(self):
         raise NotImplementedError("Subclasses must implement this method")
@@ -55,41 +100,69 @@ class Chain:
 
 class ProteinChain(Chain):
     def __init__(self, chain: BioChain, perform_calculations: bool = True):
-        super().__init__(chain, "protein")
-
-        if perform_calculations:
-            self.calculate_distances()
-            self.calculate_angles()
-            self.calculate_dihedrals()
+        super().__init__(chain, "protein", perform_calculations)
 
     def get_bb_distances(self) -> np.ndarray:
-        bb_distances = []
-        for i in range(len(self.units) - 1):
-            ca_1 = self.units[i].coms["ca_coords"]
-            ca_2 = self.units[i + 1].coms["ca_coords"]
-            bb_distances.append(distance(ca_1, ca_2))
+        """
+        Calculates and stores the backbone distances.
 
-        self.distances["bb"] = np.array(bb_distances)
+        Returns:
+            A numpy array containing the backbone distances.
+        """
+        self.distances["bb"] = np.array(
+            [self._calculate_distance(i, i + 1) for i in range(len(self.units) - 1)]
+        )
+
+    def _calculate_distance(self, index1: int, index2: int) -> float:
+        """
+        Helper function to calculate distance.
+
+        Args:
+            index1: Index of the first unit.
+            index2: Index of the second unit.
+
+        Returns:
+            The distance between the two units.
+        """
+        # ca_1 = self.units[index1].coms[CA_COORDS]
+        # ca_2 = self.units[index2].coms[CA_COORDS]
+        unit_1 = self.units[index1]
+        unit_2 = self.units[index2]
+        if unit_1 is None or unit_2 is None:
+            return np.nan
+        ca_1 = unit_1.coms[CA_COORDS]
+        ca_2 = unit_2.coms[CA_COORDS]
+        return distance(ca_1, ca_2)
 
     def get_bs_distances(self):
+        """
+        Calculates and stores the backbone-sidechain distances.
+        """
         bs_data = {
             "resname": [],
             "distance": [],
         }
         for unit in self.units:
-            if unit.fidelity and unit.unit_type == "type_2":
-                ca = unit.coms["ca_coords"]
-                sc_com = unit.coms["sidechain_com"]
-                bs_data["distance"].append(distance(ca, sc_com))
-                bs_data["resname"].append(unit.resname)
+            if unit is not None:
+                if unit.fidelity and unit.unit_type == TYPE_2:
+                    ca = unit.coms[CA_COORDS]
+                    sc_com = unit.coms[SIDCHAIN_COM]
+                    bs_data["distance"].append(distance(ca, sc_com))
+                    bs_data["resname"].append(unit.resname)
 
         self.distances["bs"] = pd.DataFrame(bs_data)
 
     def calculate_distances(self):
+        """
+        Calculates and stores the distances.
+        """
         self.get_bb_distances()
         self.get_bs_distances()
 
     def get_bbb_angles(self):
+        """
+        Calculates and stores the backbone-backbone-backbone angles.
+        """
         bbb_angles = []
         for i in range(len(self.units) - 2):
             ca_1 = self.units[i].coms["ca_coords"]
@@ -100,6 +173,9 @@ class ProteinChain(Chain):
         self.angles["bbb"] = np.array(bbb_angles)
 
     def get_sbb_angles(self):
+        """
+        Calculates and stores the sidechain-backbone-backbone angles.
+        """
         sbb_angles = {
             "resname": [],
             "angle": [],
@@ -116,6 +192,10 @@ class ProteinChain(Chain):
         self.angles["sbb"] = pd.DataFrame(sbb_angles)
 
     def get_bbs_angles(self):
+        """
+        Calculates and stores the backbone-backbone-sidechain angles.
+        """
+
         bbs_angles = {
             "resname": [],
             "angle": [],
@@ -135,6 +215,9 @@ class ProteinChain(Chain):
         self.angles["bbs"] = pd.DataFrame(bbs_angles)
 
     def calculate_angles(self):
+        """
+        Calculates and stores the angles.
+        """
         self.get_bbb_angles()
         self.get_sbb_angles()
         self.get_bbs_angles()
@@ -158,6 +241,10 @@ class ProteinChain(Chain):
         self.dihedrals["bbbb"] = np.array(bbbb_dihedrals)
 
     def get_sbbs_dihedrals(self):
+        """
+        Calculates the sbbs dihedral angles.
+        """
+
         sbbs_dihedrals = []
         for i in range(len(self.units) - 1):
             if (
@@ -189,6 +276,10 @@ class ProteinChain(Chain):
         self.dihedrals["sbbb"] = pd.DataFrame(sbbb_dihedrals)
 
     def get_bbbs_dihedrals(self):
+        """
+        Calculates the bbbs dihedral angles.
+        """
+
         bbbs_dihedrals = {
             "resname": [],
             "dihedral": [],
@@ -212,13 +303,8 @@ class ProteinChain(Chain):
 
 
 class SSDNAChain(Chain):
-    def __init__(self, chain, perform_calculations=True):
-        super().__init__(chain, "ssdna")
-
-        if perform_calculations:
-            self.calculate_dihedrals()
-            self.calculate_angles()
-            self.calculate_distances()
+    def __init__(self, chain, perform_calculations=False):
+        super().__init__(chain, "ssdna", perform_calculations)
 
     def calculate_distances(self):
         distances = {
@@ -247,6 +333,8 @@ class SSDNAChain(Chain):
             bb_distances["nu_2_name"].append(self.units[i + 1].resname)
             next_phosphate_xyz = self.units[i + 1].coms["phosphate_com"]
             next_base_xyz = self.units[i + 1].coms["base_com"]
+            sugar_xyz = self.units[i].coms["sugar_com"]
+
             bb_distances["bb_distance"].append(
                 distance(next_phosphate_xyz, next_base_xyz)
             )
@@ -340,11 +428,33 @@ class SSDNAChain(Chain):
 
 
 class ChainGenerator:
-    @staticmethod
-    def generate(chain: BioChain):
-        chain_type = ChainTypeHelper.get_chain_type(chain)
-        if chain_type == "ssdna":
-            return SSDNAChain(chain)
+    """
+    Class that is used to generate a ssdna or protein chain from a given BioChain object.
+    """
 
+    @staticmethod
+    def generate_chain(biochain: BioChain, perform_calculations: bool = True):
+        """
+        # Determine the type of chain and generate it.
+        :param biochain: BioChain object
+        :param perform_calculations: bool
+        :return: None
+        """
+
+        chain_type = ChainTypeHelper.get_chain_type(biochain)
+
+        # Generate the chain
+        if chain_type == "ssdna":
+            return SSDNAChain(biochain, perform_calculations)
         elif chain_type == "protein":
-            return ProteinChain(chain)
+            return ProteinChain(biochain, perform_calculations)
+        else:
+            raise ValueError("Chain type not recognized.")
+
+
+def remove_none_from_ends(lst):
+    while lst and lst[-1] is None:
+        lst.pop()
+    while lst and lst[0] is None:
+        lst.pop(0)
+    return lst

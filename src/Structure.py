@@ -1,12 +1,12 @@
-from dataclasses import dataclass
-from typing import Dict, List
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
 
 import pandas as pd
 from Bio.PDB.Chain import Chain as BioChain
 from Bio.PDB.Structure import Structure as BioStructure
 
-from src.Chain import Chain, ChainGenerator
-from src.utils import combine_dicts
+from src.Chain import ChainGenerator, Chain
+from src.utils import combine_dicts, print_key_shapes
 
 
 @dataclass
@@ -21,9 +21,15 @@ class ChainHandler:
         Returns:
             Tuple containing lists of protein and ssdna Chain objects.
         """
-        chains = [
-            ChainGenerator.generate(chain) for chain in self.structure.get_chains()
-        ]
+        chains = []
+        for chain in self.structure.get_chains():
+            try:
+                chains.append(ChainGenerator.generate_chain(chain))
+            except Exception as e:
+                print(e)
+                print(f"Chain {chain.id} could not be generated.")
+                raise e
+
         protein_chains = [chain for chain in chains if chain.type == "protein"]
         ssdna_chains = [chain for chain in chains if chain.type == "ssdna"]
 
@@ -79,6 +85,7 @@ class Structure:
     ssdna_chains: List[Chain] = field(init=False)
     protein_calculations: Dict = field(init=False)
     ssdna_calculations: Dict = field(init=False)
+    header: str = field(init=False)
 
     def __post_init__(self):
         """
@@ -111,6 +118,25 @@ class Structure:
         )
 
         return number_of_chains + protein_chains + ssdna_chains
+
+    def get_stats(self):
+        # Return a dictionary with the number of chains of each type and
+        # the shape of the dataframes/npy arrays for each chain
+        stats = {}
+
+        protein_stats = {}
+        for _dict in self.protein_calculations.values():
+            for key, value in _dict.items():
+                protein_stats[key] = value.shape
+        stats["Protein chains"] = protein_stats
+
+        ssdna_stats = {}
+        for _dict in self.ssdna_calculations.values():
+            for key, value in _dict.items():
+                ssdna_stats[key] = value.shape
+        stats["ssDNA chains"] = ssdna_stats
+
+        return stats
 
     def save_as_markdown(
         self, out_path: str = "data/markdowns", show: bool = True

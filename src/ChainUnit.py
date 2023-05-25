@@ -5,6 +5,8 @@ from Bio.PDB import Residue
 from src.Point import Point
 from src.utils import COMHelper, UnitTypeHelper
 
+backbone_atoms = {"N", "CA", "C", "O"}
+
 
 class ChainUnit:
     def __init__(self, unit):
@@ -26,16 +28,16 @@ class ChainUnit:
         self.id = unit.get_id()[1]
         self.coms = self.get_coms()
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return a string representation of the unit.
         """
-        out = ""
-        out += f"Name of the unit: {self.resname}\n"
-        out += f"ID of the unit: {self.id}\n"
-        out += f"Type of the unit: {self.unit_type}\n"
-        out += f"Center of masses: {self.coms}\n"
-        return out
+        return (
+            f"Name of the unit: {self.resname}\n"
+            f"ID of the unit: {self.id}\n"
+            f"Type of the unit: {self.unit_type}\n"
+            f"Center of masses: {self.coms}\n"
+        )
 
     def __repr__(self):
         return self.__str__()
@@ -64,6 +66,9 @@ class ChainUnit:
             "id": self.id,
         }
 
+        if self.unit_type in ("type_1", "type_2"):
+            unit_dict["type"] = self.unit_type
+
         unit_dict = {**unit_dict, **self.coms}
 
         return unit_dict
@@ -74,7 +79,6 @@ class ResidueUnit(ChainUnit):
         return self._check_backbone_atoms(print_info)
 
     def _check_backbone_atoms(self, print_info=False) -> bool:
-        backbone_atoms = {"N", "CA", "C", "O"}
         present_atoms = {atom.get_name() for atom in self.unit.get_atoms()}
 
         if print_info:
@@ -84,17 +88,43 @@ class ResidueUnit(ChainUnit):
         return backbone_atoms.issubset(present_atoms)
 
     def get_coms(self):
+        # Check if the unit is valid
         if not self.fidelity:
             return None
 
+        # Get the coordinates of the CA atom
         ca_coords = self.unit["CA"].get_coord()
         ca_coords = Point(ca_coords)
+
+        # Get the coordinates of the sidechain center of mass,
+        # None if the unit is type_1
         sidechain_com = (
             COMHelper.get_sidechain_com(self.unit)
             if self.unit_type == "type_2"
             else None
         )
-        return {"ca_coords": ca_coords, "sidechain_com": sidechain_com}
+
+        # Calculate the geometric center of the unit
+        # For type_1 units, the geometric center is the center of mass of the unit
+        # For type_2 units, the geometric center is the center of mass of the backbone atoms
+        if self.unit_type == "type_1":
+            geo_center = COMHelper.get_geometric_center(
+                [atom for atom in self.unit.get_atoms()]
+            )
+        elif self.unit_type == "type_2":
+            geo_center = COMHelper.get_geometric_center(
+                [
+                    atom
+                    for atom in self.unit.get_atoms()
+                    if atom.get_name() in backbone_atoms
+                ]
+            )
+
+        return {
+            "ca_coords": ca_coords,
+            "sidechain_com": sidechain_com,
+            "geo_center": geo_center,
+        }
 
 
 class NucleotideUnit(ChainUnit):
@@ -102,8 +132,8 @@ class NucleotideUnit(ChainUnit):
         return self._check_phosphate_and_sugar_atoms(print_info)
 
     def _check_phosphate_and_sugar_atoms(self, print_info=False) -> bool:
-        phosphate_atoms = {"P", "OP1", "OP2"}
-        sugar_atoms = {"C1'", "C2'", "C3'", "C4'", "C5'", "O4'", "O5'"}
+        phosphate_atoms = {"P", "OP1", "OP2", "O5'"}
+        sugar_atoms = {"C1'", "C2'", "C3'", "C4'", "C5'", "O4'"}
         present_atoms = {atom.get_name() for atom in self.unit.get_atoms()}
 
         if print_info:

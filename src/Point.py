@@ -1,6 +1,7 @@
-from dataclasses import dataclass
-import numpy as np
+from dataclasses import dataclass, field
 from typing import Union
+
+import numpy as np
 
 
 @dataclass
@@ -9,21 +10,38 @@ class Point:
     Class Point to represent a point in a multidimensional space.
 
     Attributes:
-        coordinates: np.ndarray
+        _coordinates: np.ndarray
             Coordinates of the point in the space.
-        dimensions: int
-            Number of dimensions of the space.
+            This will be used for calculations and binary operations.
     """
 
-    coordinates: np.ndarray
-    dimensions: int = None
+    _coordinates: np.ndarray = field(init=True, repr=True, compare=True)
 
     def __post_init__(self):
         """
-        Initializes the dimensions attribute post object instantiation.
+        Initializes the coordinates attribute post object instantiation.
         """
-        self.coordinates = np.array(self.coordinates)
-        self.dimensions = len(self.coordinates)
+        self._coordinates = np.array(self._coordinates)
+
+    @property
+    def coordinates(self) -> np.ndarray:
+        """
+        Returns the coordinates of the point.
+
+        Returns:
+            np.ndarray: Coordinates of the point.
+        """
+        return self._coordinates
+
+    @property
+    def dimensions(self) -> int:
+        """
+        Returns the dimensions of the space.
+
+        Returns:
+            int: Number of dimensions of the space.
+        """
+        return len(self._coordinates)
 
     def __str__(self) -> str:
         """
@@ -32,24 +50,10 @@ class Point:
         Returns:
             str: String representation of the point.
         """
-        np.set_printoptions(
-            formatter={"float": lambda x: "{0:0.3f}".format(x)},
-            linewidth=100,
-            suppress=True,
-        )
-        return str(self.coordinates)
+        return np.array2string(self._coordinates, precision=3, suppress_small=True)
 
     def __repr__(self) -> str:
         return self.__str__()
-
-    def get_coordinates(self) -> np.ndarray:
-        """
-        Returns the coordinates of the point.
-
-        Returns:
-            np.ndarray: Coordinates of the point.
-        """
-        return self.coordinates
 
 
 def distance(point_1: Point, point_2: Point) -> Union[np.float64, None]:
