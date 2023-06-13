@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 import pandas as pd
 from Bio.PDB.Chain import Chain as BioChain
 from Bio.PDB.Structure import Structure as BioStructure
+from Bio.PDB import PDBParser
 
 from src.Chain import ChainGenerator, Chain
 from src.utils import combine_dicts, print_key_shapes
@@ -25,10 +26,13 @@ class ChainHandler:
         for chain in self.structure.get_chains():
             try:
                 chains.append(ChainGenerator.generate_chain(chain))
+                # print(f"Chain {chain.id} generated successfully.")
             except Exception as e:
                 print(e)
-                print(f"Chain {chain.id} could not be generated.")
+                print(f"Chain {chain.id} could not be generated. Skipping...")
                 raise e
+            # finally:
+            #     print(f"Chain {chain.id} generated successfully.")
 
         protein_chains = [chain for chain in chains if chain.type == "protein"]
         ssdna_chains = [chain for chain in chains if chain.type == "ssdna"]
@@ -166,3 +170,25 @@ class Structure:
             import webbrowser
 
             webbrowser.open(out_file)
+
+
+# A structure generator that generates a structure from a PDB file path.
+# The structure is generated from the PDB file using BioPython.
+
+
+class StructureGenerator:
+    @staticmethod
+    def generate_structure(pdb_file_path: str) -> Structure:
+        """
+        Generates a structure from a PDB file path.
+
+        Args:
+            pdb_file_path : str
+                Path to the PDB file.
+
+        Returns:
+            A Structure object.
+        """
+        pdb_id = pdb_file_path.split("/")[-1].split(".")[0]
+        structure = PDBParser().get_structure(pdb_id, pdb_file_path)
+        return Structure(pdb_id, structure)

@@ -449,7 +449,7 @@ class ChainGenerator:
         elif chain_type == "protein":
             return ProteinChain(biochain, perform_calculations)
         else:
-            raise ValueError("Chain type not recognized.")
+            print(f"Unknown chain type: {chain_type}")
 
 
 def remove_none_from_ends(lst):

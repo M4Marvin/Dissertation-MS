@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Callable
 
 import matplotlib.pyplot as plt
 
@@ -68,7 +68,7 @@ class GaussianFunction:
 
 
 class Fitter:
-    def __init__(self, maxfev: int = 10000):
+    def __init__(self, maxfev: int = 1000000):
         self.maxfev = maxfev
 
     def fit_func(
@@ -100,7 +100,7 @@ class ModelSelector:
         for num_gaussians, fit in fits.items():
             popt, pcov = fit
             fitted_func = GaussianFunction.multi_gaussian(x, *popt)
-                    mse = mean_squared_error(y, fitted_func)
+            mse = mean_squared_error(y, fitted_func)
 
         if measure == "aic":
             score = self.calculate_aic(len(x), mse, num_gaussians * 3)
@@ -113,7 +113,8 @@ class ModelSelector:
             best_func = fitted_func
             best_num_gaussians = num_gaussians
 
-    return best_fit, best_func, best_score, best_num_gaussians
+        return best_fit, best_func, best_score, best_num_gaussians
+
 
 def main():
     data_file = "path/to/your/csv/file.csv"
@@ -132,7 +133,12 @@ def main():
         fits[num_gaussians] = fitter.fit_func(x, y, num_gaussians)
 
     model_selector = ModelSelector()
-    best_fit, best_func, best_score, best_num_gaussians = model_selector.select_best_model(x, y, fits)
+    (
+        best_fit,
+        best_func,
+        best_score,
+        best_num_gaussians,
+    ) = model_selector.select_best_model(x, y, fits)
 
     print(f"Best model has {best_num_gaussians} Gaussians with a score of {best_score}")
 

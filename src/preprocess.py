@@ -1,27 +1,43 @@
 from Bio.PDB.Residue import Residue
-from Bio.PDB.Polypeptide import is_aa, is_nucleic
+from Bio.PDB.Polypeptide import is_aa
 from Bio.PDB.PDBIO import Select, PDBIO
 from Bio.PDB import PDBParser
 
-# New version using biopython
+
+def is_nucleic(residue: Residue) -> bool:
+    """
+    Checks if the given residue is a nucleic acid.
+
+    Parameters
+    ----------
+    residue : Bio.PDB.Residue.Residue
+        The residue to check.
+
+    Returns
+    -------
+    bool
+        True if the residue is a nucleic acid, False otherwise.
+    """
+    return residue.get_resname() in ["DA", "DC", "DG", "DT", "A", "C", "G", "U"]
 
 
 # Combine Complex and Positive Select also remove hydrogen atoms
 class ComplexPositiveSelect(Select):
+    def accept_chain(self, chain):
+        # Remove chains with no residues and hetero atoms
+        if len(chain) == 0 or chain.id == " ":
+            return 0
+        else:
+            return 1
+
     def accept_residue(self, residue):
         if (is_aa(residue) or is_nucleic(residue)) and residue.id[1] > 0:
             return 1
         else:
             return 0
 
-    def accept_atom(self, atom):
-        if atom.element == "H":
-            return 0
-        else:
-            return 1
 
-
-def clean_pdb(pdb_path: str, out_path: str, select: ComplexPositiveSelect) -> None:
+def clean_pdb(pdb_path: str, out_path: str, select=ComplexPositiveSelect()) -> None:
     pdb_id: str = pdb_path.split("/")[-1].split(".")[0]
     pdb_parser: PDBParser = PDBParser()
     structure: Structure = pdb_parser.get_structure(pdb_id, pdb_path)
